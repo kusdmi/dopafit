@@ -1,0 +1,277 @@
+/* Page shell: the frame, the header and the scroll container every screen
+   is built from. */
+@layer components {
+  .app-frame,
+  .protected-shell,
+  .tab-screen {
+    height: 100%;
+    min-height: 0;
+  }
+  .page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: var(--surface);
+  }
+  /* Таб-бар ПЛАВАЕТ над контентом (см. components/bottom-nav.css), поэтому
+     страницу под него больше не укорачиваем: раньше здесь было
+     `height: calc(100dvh - var(--tab-bar-space))`, и полоса под баром
+     переставала принадлежать странице — сквозь неё, включая зазор вокруг
+     плавающего бара, просвечивал белый фон документа.
+
+     Высоту страница наследует от общего каркаса, а место под бар резервирует
+     прокручиваемая область: --padding-bottom в .page-content. Так фон
+     страницы доходит до самого низа экрана и лежит под баром и его тенью, а
+     контент всё так же не уезжает под бар. */
+  .protected-shell .page-content {
+    --padding-bottom: calc(var(--tab-bar-space) + 0.5rem);
+  }
+  /* Additive modifier for <Page background="gradient">: only overrides
+     `background`, so it composes with .page instead of touching its other
+     rules (layout/height, owned above). Figma screens that use the primary
+     gradient (onboarding/auth/home) opt in per-screen; the default stays the
+     flat --surface fill. */
+  .page--gradient {
+    background: var(--gradient-bg-primary);
+  }
+  .page-header {
+    flex-shrink: 0;
+    /* Воздух вокруг тулбара СИММЕТРИЧЕН, и делаются равными именно собственные
+       отступы шапки — --page-header-gap. Само значение задаётся ниже, в
+       `.page-header--transparent`, и сверено с макетом (10px).
+
+       `env(safe-area-inset-top)` в эту симметрию НЕ входит: это обязательная
+       зона под вырезом, а не отступ для красоты, поэтому она прибавляется к
+       верхней половине отдельным слагаемым.
+
+       Снизу из отступа вычитается 1px границы-разделителя: она рисуется всегда
+       (пусть и прозрачной) и входит в высоту, так что без вычета нижняя
+       половина была бы на пиксель толще верхней. */
+    --page-header-gap: 0px;
+    /* Базовый воздух под системной зоной — 0: непрозрачная шапка получает его
+       от своей плашки. Переопределяется в --transparent (см. ниже). */
+    --page-header-air: 0px;
+    /* Верхний отступ = безопасная зона + БОЛЬШЕЕ из двух: макетный gap и
+       минимальный воздух под вырезом.
+
+       max(), а не отдельная ветка под «есть вырез»: сравнить env() в media-запросе
+       нельзя, а так правило само делает нужное на обоих классах устройств. На
+       экране без выреза (inset 20px и меньше) видимая рамка проходит по краю
+       корпуса, и там достаточно макетных 10px — но и 20px не мешают, потому что
+       под статус-баром всё равно лежит та же полоса. На вырезе/острове воздух
+       становится 20px и заголовок перестаёт липнуть к железу. */
+    padding-top: calc(
+      env(safe-area-inset-top) + max(var(--page-header-gap), var(--page-header-air))
+    );
+    padding-bottom: max(0px, calc(var(--page-header-gap) - 1px));
+    /* Линия-разделитель прозрачна, пока страница не прокручена: сверху отделять
+       ещё нечего. Как только контент уезжает под шапку, она проявляется — иначе
+       прокрученный текст упирается в шапку и сливается с ней. `border-bottom`
+       держим всегда (прозрачным), а не добавляем по флагу: иначе в момент
+       прокрутки страница подпрыгивала бы на 1px. Цвет анимирован, поэтому линия
+       проявляется, а не щёлкает. */
+    border-bottom: 1px solid transparent;
+    background: var(--card);
+    transition: border-color 160ms ease-out;
+  }
+  .page[data-scrolled] > .page-header {
+    border-bottom-color: var(--line);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .page-header {
+      transition: none;
+    }
+  }
+  /* Additive modifier for <PageHeader transparent>: only clears `background`
+     and `border-bottom`, so it composes with .page-header instead of touching
+     its other rules (flex sizing, safe-area padding, owned above). The Figma
+     auth screens (392:2021 / 392:1972 / 392:2034) float the back chevron and
+     the title directly on the page gradient, with no header plate or divider. */
+  .page-header--transparent {
+    /* На градиенте в покое линии нет — как и у обычной шапки (см. выше).
+       Прокрученное состояние её показывает: контент уезжает под шапку и на
+       градиенте тоже. */
+    border-bottom-color: transparent;
+    /* Fully transparent, with NO scrim and NO backdrop-filter: nothing ever
+       passes beneath the title. `.page-header` is a flex sibling of
+       `main.page-content`, and that main is the scroll container — content
+       scrolls INSIDE main, which begins under the header, so the header is
+       never overlapped. A scrim here would just be an opaque --surface band
+       painted over the page gradient, making the gradient visibly stop at the
+       header's edge. Transparent lets the one page gradient run unbroken from
+       the safe area down. */
+    background: transparent;
+    /* Own gap on top of the safe-area inset. The opaque header gets its
+       breathing room from the card plate and the 44px toolbar floor; a
+       transparent one has neither, so the title would otherwise sit on the very
+       top edge. Задаётся именно --page-header-gap, а не `padding-top`: базовое
+       правило раскладывает его на обе стороны поровну и обрамляет тулбар
+       симметрично.
+
+       10px — по макету. В Figma тулбар — полоса 44px (глиф стрелки 24px в
+       тап-цели: y=81..105, значит полоса y=71..115) на узлах 932:1941,
+       1006:2005, 1059:2001, 1064:2035, 1071:2094, а контент начинается на
+       y=122: под тулбаром макет оставляет всего 7px. Ближайшее значение
+       проектной сетки (5/10/15/25) — 10px, одинаково с двух сторон. Высота
+       шапки — 10 + 44 + 10 = 64px.
+
+       Уменьшается именно gap, а не тулбар: его `min-height: 44px` — тап-цель
+       кнопки «назад», ниже опускать нельзя. */
+    --page-header-gap: 10px;
+    /* ВЫРЕЗ/ОСТРОВ. Макет рисован без выреза, поэтому 10px там читались как
+       достаточный воздух сверху. На устройстве это не так:
+       `env(safe-area-inset-top)` кончается по РАМКЕ выреза, и между часами (или
+       нижней кромкой Dynamic Island) и заголовком остаются те же 10px — на
+       iPhone 14 Pro и новее логотип и заголовок зрительно липнут к острову,
+       потому что у него ещё и скруглённые углы снизу.
+
+       Минимальный воздух под системной зоной задаётся отдельно от макетного
+       gap: 20px — ближайший шаг проектной сетки, дающий отступ, сопоставимый с
+       системными экранами iOS (16..20px до крупного заголовка).
+
+       Итоговый padding-top ниже берётся как max(inset + gap, inset + min-air)
+       — см. само правило. Тулбар и его тап-цель 44px не трогаются. */
+    --page-header-air: 20px;
+  }
+  /* 24px matches `.page-padding`, so the toolbar's own edges line up with the
+     content below it. */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    position: relative;
+    padding: 0 24px;
+  }
+  /* Заголовок экрана. Размер/интерлиньяж/вес — роль H2 дизайн-системы
+     (18px Bold): AGENTS.md разрешает только роли.
+
+     Это УРОВЕНЬ 2 — вложенный экран (флоу, подстраница, настройки): по центру,
+     под стрелкой «назад». Корневые экраны вкладок ставят уровень 1 классом
+     `text-display text-left` в месте использования (см. design-system.md
+     «Уровни заголовков»). */
+  .page-title {
+    flex: 1;
+    margin: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: var(--text-h2);
+    line-height: var(--text-h2--line-height);
+    font-weight: var(--text-h2--font-weight);
+    text-align: center;
+  }
+  /* Centred on the SCREEN, not on what is left of the row. `flex: 1` +
+     `text-align: center` centres the title inside the LEFTOVER space, so a row
+     with a 44px back chevron on the left and no end slot pushes the visual
+     centre ~22px right. Absolute positioning pins the title to the toolbar's
+     own centre, which is the screen's centre.
+
+     `left/right: 56px` reserves the chevron's 44px tap target plus a 12px gap
+     on BOTH sides, so a long title truncates (rules above) before it can reach
+     the chevron or an end-slot action instead of running under either.
+
+     Scoped to a DIRECT child of `.toolbar`: WorkoutPage nests its PageTitle in
+     a flex column together with the elapsed-time line, and that title must stay
+     in its stack's flow rather than being pulled onto the toolbar's centre
+     line. `.text-left` opts out too — that marker is how the root tab screens
+     select the Display, full-width, left-aligned level-1 title.
+
+     `top: 50%` + `translateY(-50%)` is what keeps it vertically centred. An
+     absolutely positioned box is out of the flex flow, so `align-items: center`
+     on the toolbar no longer applies to it: without a vertical anchor it falls
+     back to its static position, the top of the line box rather than the row's
+     middle. */
+  .toolbar > .page-title:not(.text-left) {
+    position: absolute;
+    left: 56px;
+    right: 56px;
+    top: 50%;
+    transform: translateY(-50%);
+    flex: none;
+  }
+  .toolbar-actions {
+    display: flex;
+    align-items: center;
+    z-index: 1;
+  }
+  .toolbar-actions--start {
+    order: -1;
+  }
+  .toolbar-actions--end {
+    order: 1;
+  }
+  /* The end slot pushes itself to the right edge instead of relying on whatever
+     sits in the middle to expand. `.page-title { flex: 1 }` alone does not
+     cover a toolbar whose middle child is NOT a PageTitle — the home screen,
+     which puts the brand mark there. `margin-left: auto` makes the toolbar
+     itself responsible for the three-zone layout, whatever it is given.
+
+     Scoped to a direct child of `.toolbar` on purpose: CalendarPage reuses
+     `ToolbarActions` as a plain flex wrapper for its month arrows inside a
+     `justify-between` row, where an auto margin would fight that container. */
+  .toolbar > .toolbar-actions--end {
+    margin-left: auto;
+  }
+  .history-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-width: 44px;
+    min-height: 44px;
+    color: var(--color-brand-400);
+    /* Роль подписи рядом со стрелкой (проп `text` у HistoryBack); размером самой
+       стрелки управляет .history-back__glyph. */
+    font-size: var(--text-body-m);
+    line-height: var(--text-body-m--line-height);
+  }
+  /* Lucide ChevronLeft чертит галочку по вертикали от y=6 до y=18 во вьюбоксе
+     24, то есть ровно на половину кегля, — поэтому ~20px чернильной высоты
+     требуют 40px размера. Вьюбокс симметричен, значит нарисованное совпадает с
+     центром бокса.
+
+     stroke-width снижен с базовых 2 (при 40px это 3.3px штриха) до 1.6 — так
+     вес линии совпадает с окружающей типографикой, и стрелка не выглядит
+     жирнее, чем нужно. */
+  .history-back__glyph {
+    font-size: 40px;
+    stroke-width: 1.6;
+    flex-shrink: 0;
+  }
+  /* Отклик на нажатие — парный к `:active` у .action-button (см.
+     components/controls.css). Здесь ТОЛЬКО прозрачность, без вуали-заливки:
+     кнопка «назад» — глиф на прозрачном фоне, и затемняющий слой нарисовал бы
+     под стрелкой прямоугольник, которого в покое нет. Приглушение самого
+     глифа — то же подтверждение тапа, но по форме элемента. */
+  .history-back {
+    transition: opacity 80ms ease-out;
+  }
+  .history-back:active {
+    opacity: 0.6;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .history-back {
+      transition: none;
+    }
+  }
+  .page-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    /* Фолбэк — --safe-area-bottom, а не env() напрямую (см. токен в
+       app/styles/index.css): на экранах вне зоны табов низ страницы тоже не
+       должен уезжать под home-indicator на первых кадрах. */
+    padding-bottom: var(--padding-bottom, var(--safe-area-bottom));
+    scroll-padding: 24px;
+  }
+  .page-padding {
+    padding: 24px;
+    padding-bottom: calc(24px + var(--padding-bottom, var(--safe-area-bottom)));
+  }
+  .page-content input,
+  .page-content textarea {
+    scroll-margin: 24px;
+  }
+}

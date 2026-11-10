@@ -1,0 +1,129 @@
+@layer components {
+  /* Поле ввода — Figma 756:1712 (узлы 756:1986/757:1991…): прозрачный фон,
+     обводка 1px, радиус 14px, высота 52px, padding 10px 22px (вариант с иконкой
+     срезает правый паддинг под кнопку-глаз, см. .app-field--with-icon ниже).
+     Focus/error в макете не показаны — обводка меняет цвет. */
+  .app-field {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* Та же минимальная высота, что у fieldGeometry (shared/ui/field.ts): поля
+       фасада Input и нативные Select/date стоят рядом на одном экране (профиль,
+       форма упражнения) и обязаны совпадать. 52px — высота поля из макета и
+       выше порога тап-цели 44px. */
+    min-height: 52px;
+    border: 1px solid var(--neutral-500);
+    border-radius: 0.875rem;
+    padding: 10px 22px;
+    background: transparent;
+    transition: border-color 160ms ease;
+  }
+
+  .app-field:focus-within {
+    border-color: var(--color-brand-400);
+  }
+  .app-field--error {
+    border-color: var(--color-danger);
+  }
+
+  /* Аддитивный модификатор: поле БЕЗ собственной рамки, с содержимым по центру
+     колонки. Всё остальное (подпись над строкой ввода, min-height, типографика)
+     остаётся от .app-field.
+
+     Нужен там, где поля уже лежат внутри чужой обводки — блок записи подхода на
+     экране тренировки. Макет 1039:2066 рисует ОДНУ рамку на весь блок, «Кг» и
+     «Повторы» внутри идут подписью со значением под ней, и обе колонки
+     отцентрованы.
+
+     `border-color: transparent`, а НЕ `border: none`: рамка держит высоту и
+     ширину бокса, поэтому ряд не прыгает — кнопка рядом растянута по высоте ряда
+     (`self-stretch`) и завязана на неё.
+
+     Боковой padding НЕ обнуляем: при 0 подписи встают в 2px от внутренней
+     кромки секции, то есть липнут к краю. От края содержимое держит выключка по
+     центру, как в макете. */
+  .app-field--bare {
+    border-color: transparent;
+    align-items: center;
+    text-align: center;
+  }
+  .app-field--bare .app-field__control {
+    justify-content: center;
+  }
+  .app-field--bare .app-field__control input {
+    text-align: center;
+  }
+
+  .app-field__label {
+    /* Размер/интерлиньяж/вес — класс text-label (JSX), здесь только цвет и зазор. */
+    color: var(--muted);
+    margin-bottom: 1px;
+  }
+
+  .app-field__control {
+    display: flex;
+    align-items: center;
+  }
+
+  .app-field__control input {
+    --color: var(--content);
+    --placeholder-color: var(--muted);
+    --background: transparent;
+    --min-height: 22px;
+    flex: 1 1 auto;
+    min-height: 22px;
+    width: 100%;
+    min-width: 0;
+    outline: none;
+    background: transparent;
+    color: var(--content);
+    /* Manrope SemiBold 16px = text-h3 (392:5036). */
+    font-size: var(--text-h3);
+    font-weight: var(--text-h3--font-weight);
+  }
+
+  .app-field__control input::placeholder {
+    color: var(--muted);
+  }
+
+  .app-field__error {
+    /* Размер/интерлиньяж/вес — класс text-caption (JSX), здесь зазор и цвет. */
+    margin-top: 4px;
+    color: var(--color-danger);
+  }
+
+  /* Вариант с иконкой справа (поле пароля, узел 392:5047): padding по макету
+     уже 15px 22px, поэтому у самого поля срезаем правый паддинг под кнопку-глаз
+     (она несёт свой отступ до края через --padding-end). */
+  .app-field--with-icon {
+    padding-right: 22px;
+  }
+
+  .app-field .app-eye {
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+    margin: 0;
+    height: 44px;
+    width: 44px;
+    --padding-top: 0;
+    --padding-bottom: 0;
+    --padding-start: 10px;
+    --padding-end: 10px;
+    --color: var(--color-brand-400);
+  }
+  .app-field .app-eye {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+  }
+  .app-field .app-eye svg {
+    display: block;
+    margin: 0;
+    font-size: 20px;
+  }
+}

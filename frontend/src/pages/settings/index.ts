@@ -1,0 +1,9 @@
+export { SettingsPage } from './main/SettingsPage';
+export { SubscriptionPage } from './subscription/SubscriptionPage';
+export { NotificationSettingsPage } from './notifications/NotificationSettingsPage';
+export { ReferralPage } from './referral/ReferralPage';
+export { ProfileSettingsPage } from './profile/ProfileSettingsPage';
+export { ThemeSettingsPage } from './theme/ThemeSettingsPage';
+export { ContactsSettingsPage } from './contacts/ContactsSettingsPage';
+export { SecuritySettingsPage } from './security/SecuritySettingsPage';
+export { DeleteAccountPage } from './delete-account/DeleteAccountPage';

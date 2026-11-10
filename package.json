@@ -1,0 +1,6 @@
+{
+  "name": "dopafit",
+  "private": true,
+  "packageManager": "pnpm@10.17.1",
+  "scripts": { "contracts": "pnpm --filter dopafit-backend export-openapi && pnpm --filter dopafit-frontend codegen" }
+}

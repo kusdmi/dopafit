@@ -1,0 +1,14 @@
+{$DOPAFIT_APP_DOMAIN} {
+	encode gzip
+	# One upstream serves the PWA and /api/v1 alike, so the app is same-origin
+	# with its API and the browser never issues a preflight.
+	# App enforces its own body limits (2 MB requests, 50 MB media). 60 MB = headroom.
+	request_body {
+		max_size 60MB
+	}
+	reverse_proxy app:8000
+}
+
+# Extra site blocks (alias redirects etc.) live on the VPS in ~/dopafit/conf.d,
+# outside git. Empty glob matches are a no-op.
+import /etc/caddy/conf.d/*.caddy

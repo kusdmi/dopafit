@@ -1,0 +1,21 @@
+.DS_Store
+node_modules/
+.pnpm-store/
+frontend/.pnpm-store/
+dist/
+frontend/.vite/
+.env
+.env.local
+# Vite per-environment local overrides (e.g. frontend/.env.development.local) — never committed
+.env.*.local
+coverage/
+
+# Local prod env (deploy stand)
+deploy/.env.prod
+deploy/.env
+
+# JetBrains
+.idea/
+
+# Local leftovers from the removed CDP probe suite (including private .env files).
+qa/

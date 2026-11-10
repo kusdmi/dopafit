@@ -1,0 +1,16 @@
+# Generated artefacts. Never edit by hand — regenerate instead:
+#   contracts/openapi.json, frontend/src/shared/api/schema.d.ts  ->  make contracts
+#   backend/drizzle/**                                           ->  make be-makemigration
+# `linguist-generated` collapses them in review; `-diff` keeps a 291 KB contract and a
+# 114 KB snapshot out of `git diff`, so a real change stays visible next to them.
+contracts/openapi.json              linguist-generated=true -diff text eol=lf
+frontend/src/shared/api/schema.d.ts linguist-generated=true -diff text eol=lf
+backend/drizzle/*.sql               linguist-generated=true -diff
+backend/drizzle/meta/*.json         linguist-generated=true -diff
+
+# Prettier runs in Linux containers, while Windows may have core.autocrlf=true.
+e2e/** text eol=lf
+backend/** text eol=lf
+
+# Preserve binary email logos under the backend-wide text rule above.
+backend/src/platform/email/assets/*.png binary

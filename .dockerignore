@@ -1,0 +1,11 @@
+.git
+**/node_modules
+**/dist
+**/playwright-report
+**/test-results
+**/.env*
+**/*.pem
+**/*.keystore
+**/keystore.properties
+frontend/ios
+frontend/android

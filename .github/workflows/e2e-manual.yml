@@ -1,0 +1,53 @@
+name: E2E (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Browser suite
+        type: choice
+        default: smoke
+        options:
+          - smoke
+          - full
+          - pwa
+          - all
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(inputs.suite == 'all' && '["full","pwa"]' || format('["{0}"]', inputs.suite)) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install workspace dependencies and build the images
+        run: make deps
+      - name: Run browser suite
+        env:
+          SUITE: ${{ matrix.suite }}
+        run: |
+          case "$SUITE" in
+            smoke) make e2e-smoke ;;
+            full) make e2e ;;
+            pwa) make e2e-pwa ;;
+            *) exit 1 ;;
+          esac
+      - name: Upload the report of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report-${{ matrix.suite }}
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Tear the stand down
+        if: always()
+        run: docker compose down -v

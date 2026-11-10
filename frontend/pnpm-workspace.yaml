@@ -1,0 +1,4 @@
+allowBuilds:
+  msw: true
+# sharp — нативная зависимость @capacitor/assets (генерация иконок/сплэшей)
+  sharp: true

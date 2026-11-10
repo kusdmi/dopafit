@@ -1,0 +1,213 @@
+/* Interactive controls: the action button, the segmented track and the
+   settings toggle. */
+@layer components {
+  .action-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-weight: 600;
+    color: var(--color-brand-400);
+    cursor: pointer;
+  }
+  .action-button--solid {
+    background: var(--color-brand-400);
+    color: var(--color-logo-fg);
+  }
+  .action-button--outline {
+    border: 1px solid currentColor;
+  }
+  .action-button--danger {
+    color: var(--color-danger);
+  }
+  .action-button--danger.action-button--solid {
+    background: var(--color-danger-fill);
+    color: var(--color-logo-fg);
+  }
+  /* Disabled state, NOT via opacity: `opacity` fades the fill and the label
+     together, so the ratio between them collapses (a disabled primary button at
+     .5 measures 1.26:1 in the light theme).
+
+     A disabled control gives up its fill entirely and states its unavailability
+     in neutrals: a hairline outline with --muted text, over whatever the button
+     sits on. Legible in both themes (--muted on --card: 5.21:1 dark / 8.65:1
+     light; on --surface: 6.25:1 / 9.42:1). A --card-light fill is rejected:
+     --muted on it is 3.35:1 in the dark theme, a pairing design-system.md lists
+     as off-limits. */
+  .action-button:disabled {
+    cursor: not-allowed;
+    background: transparent;
+    color: var(--muted);
+  }
+  /* A filled or outlined button keeps a visible edge when disabled, so it still
+     reads as a control rather than as stray text. The bare `clear` fill (an
+     inline text action — the OTP resend countdown, "Изменить email") has no edge
+     when enabled either, so it gains none here: --muted alone is what separates
+     it from the accent-coloured live action next to it. */
+  .action-button--solid:disabled,
+  .action-button--outline:disabled {
+    border: 1px solid var(--line);
+  }
+  .action-button--small {
+    padding: 6px 10px;
+  }
+  /* Segment/SegmentOption: nearest Figma reference is the account-type pill
+     selector (392:5163/392:5169) — selected = accent-400 fill + neutral-50 text,
+     unselected = transparent + 2px neutral-600 outline, gap 5px, flex-1 options.
+     Figma has no separate "tab switcher" node, so the track (a container pill
+     holding both options) is the multi-screen pattern in use (tabs on
+     Home/ProgramList/TrainerClientsView/etc.).
+
+     `overflow-x: auto` is a safety net, not a fix for a live bug: measured at
+     342px (a 390px phone less the page gutters) every current segment already
+     fits, because an option's label WRAPS rather than forcing the track wider.
+     The track contains its own overflow should a future label row exceed it,
+     instead of widening the document.
+
+     Deliberately no `white-space: nowrap`: measured, it stops "Стандартные
+     программы" wrapping to two lines and spills it 13px over the neighbouring
+     option (which has overflow:visible). Wrapping is correct for this track. */
+  .segment {
+    display: flex;
+    gap: 5px;
+    padding: 3px;
+    border-radius: 37.5px;
+    background: var(--card-light);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .segment::-webkit-scrollbar {
+    display: none;
+  }
+  .segment-option {
+    flex: 1;
+    min-width: 0;
+    min-height: 34px;
+    border-radius: 37.5px;
+    padding: 8px 10px;
+  }
+  .segment-option[aria-selected='true'] {
+    background: var(--color-brand-400);
+    color: var(--color-logo-fg);
+  }
+  /* ОТКЛИК НА НАЖАТИЕ. Серую вспышку WebKit мы сняли глобально (base.css), и
+     без собственного состояния у нажатия не осталось бы обратной связи вообще:
+     кнопка выглядела бы «мёртвой» до того, как отработает переход.
+
+     Отклик — из двух частей, и это НЕ украшение:
+       `scale(0.97)` — читается мгновенно даже при подтормаживании (геометрия,
+         а не цвет), как у системной кнопки iOS;
+       затемнение `--press-veil` — работает и на СВЕТЛОЙ заливке, где масштаб
+         один заметен слабее. Слой накладывается через `background-image`, а не
+         подменой токена цвета: у .action-button четыре варианта заливки
+         (solid/outline/clear/danger) и у .segment-option два состояния —
+         один слой поверх покрывает все, не дублируя палитру.
+
+     Почему блок стоит ЗДЕСЬ, ниже всех правил заливки: `.segment-option
+     [aria-selected='true']` задаёт `background` СОКРАЩЁННЫМ свойством, а оно
+     сбрасывает `background-image` в none. Стой этот блок выше — на выбранном
+     сегменте вуаль молча не появлялась бы.
+
+     80ms — короче порога, на котором задержка читается как лаг, но достаточно,
+     чтобы не мигнуть. Переход симметричен: анимированное только отжатие
+     выглядит вязким. */
+  .action-button,
+  .segment-option {
+    --press-veil: color-mix(in srgb, var(--neutral-900) 12%, transparent);
+    transition: transform 80ms ease-out;
+  }
+  .action-button:active:not(:disabled),
+  .segment-option:active {
+    background-image: linear-gradient(var(--press-veil), var(--press-veil));
+  }
+  .action-button:active:not(:disabled),
+  .segment-option:active {
+    transform: scale(0.97);
+  }
+  /* `transform` на нажатии — движение, а не смысл: под reduce остаётся
+     затемнение, которого достаточно как подтверждения тапа. */
+  @media (prefers-reduced-motion: reduce) {
+    .action-button,
+    .segment-option {
+      transition: none;
+    }
+    .action-button:active:not(:disabled),
+    .segment-option:active {
+      transform: none;
+    }
+  }
+  /* Тумблер настроек. Состояние кодируется дорожкой и положением бегунка, а не
+     только цветом: включённый — заливка акцентом и бегунок справа, выключенный —
+     нейтральная дорожка с обводкой и бегунок слева.
+
+     Контраст (порог 3:1 для нетекстовой графики):
+       дорожка ВЫКЛ (обводка --neutral-500 #6E6A64)
+         на --card  3.03:1 тёмная (#27251F) · 4.60:1 светлая (#F2F0EC)
+       дорожка ВКЛ (заливка акцентом #FF7003)
+         на --card  5.52:1 тёмная · 3.25:1 светлая
+     Бегунок --neutral-50 на акценте даёт 2.67:1 — ниже порога, поэтому его
+     границу держит тень, а не видимая обводка (см. .toggle::after ниже). */
+  .toggle {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    flex-shrink: 0;
+    width: 44px;
+    height: 26px;
+    margin: 0;
+    border: 1px solid var(--neutral-500);
+    border-radius: 13px;
+    background: var(--card-light);
+    cursor: pointer;
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease;
+  }
+
+  /* The knob carries NO border: a 1px ring read as an unwanted outline drawn
+     around it. A drop shadow carries the boundary instead — invisible as a line,
+     but it is what the contrast is measured against. The darkest point of the
+     halo is rgba(0,0,0,.55) composited over the accent #FF7003, i.e.
+     #FF7003 × 0.45 = #723201, and the knob --neutral-50 (#FAFAF8) against that
+     scores 8.14:1, far past the 3:1 floor. Against the OFF track (--card-light)
+     the same halo keeps the knob at 7.4:1 dark / 9.6:1 light. */
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    transform: translateY(-50%);
+    border-radius: 50%;
+    background: var(--neutral-50);
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.55),
+      0 0 1px rgba(0, 0, 0, 0.45);
+    transition: transform 160ms ease;
+  }
+
+  .toggle:checked {
+    border-color: var(--color-brand-400);
+    background: var(--color-brand-400);
+  }
+
+  .toggle:checked::after {
+    transform: translate(18px, -50%);
+  }
+
+  .toggle:focus-visible {
+    outline: 2px solid var(--color-brand-400);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .toggle,
+    .toggle::after {
+      transition: none;
+    }
+  }
+}

@@ -1,0 +1,9 @@
+# Revisions to skip in `git blame` — pure reformatting, no behaviour change.
+# Enable locally once: git config blame.ignoreRevsFile .git-blame-ignore-revs
+# (GitHub reads this file on its own.)
+
+# style(backend): apply prettier outside the contract sources
+16593c277adc1e25f12ed11d4b8625db8125fa56
+
+# style(http): format the contract sources
+939ba3588fe216f21eb10208da68778fec0441ad

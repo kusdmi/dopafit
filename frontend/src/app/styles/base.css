@@ -1,0 +1,171 @@
+/* Document-level rules, deliberately OUTSIDE `@layer components`.
+
+   Unlayered CSS always beats layered CSS regardless of specificity, which is
+   exactly what these need: they are element/attribute selectors that set the
+   frame every screen sits in, and no Tailwind utility should silently take
+   them over. Everything that IS a component class belongs in the layered
+   files instead — see components/. */
+:root {
+  --app-height: 100dvh;
+  /* Safari extends the document canvas into its system areas. Paint the same
+     background as gradient pages, including a solid tint for browser chrome. */
+  background-color: var(--chrome-bg);
+  background-image: var(--gradient-bg-primary);
+  background-repeat: no-repeat;
+}
+
+/* Standalone WebKit can subtract the status bar from dvh despite
+   viewport-fit=cover. The large viewport includes the full display. */
+@supports (-webkit-touch-callout: none) {
+  @media (display-mode: standalone) {
+    :root {
+      --app-height: 100lvh;
+    }
+  }
+}
+
+html,
+body {
+  height: var(--keyboard-layout-height, var(--app-height));
+}
+
+#root {
+  height: 100%;
+}
+
+/* Only PageContent scrolls. Keep document overscroll from moving the chrome. */
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  /* A fixed body is clipped to WebKit's shorter standalone viewport.
+     Layout containment anchors all fixed chrome (including portals) to the
+     same full-height box without making the document a scroll container. */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  contain: layout;
+}
+
+/* ЗУМ ПО ДВОЙНОМУ ТАПУ. Тегом viewport не лечится, гасится только этим —
+   `manipulation` означает «оставить скролл и пинч браузеру, но убрать двойной
+   тап и сопутствующую задержку клика ~300ms».
+
+   Осознанное требование продукта: приложение должно вести себя как нативное.
+   Компромисс с доступностью описан у тега viewport в index.html.
+
+   Почему на `body`, а НЕ на `html`/`*`: значение наследуется на всё поддерево,
+   но потомок может его переопределить — и это важно, потому что
+   shared/ui/LineChart держит на своём svg `touch-action: pan-y`, без которого
+   ломается скраб графика. Селектор `*` перебил бы его по каскаду.
+
+   `manipulation` НЕ запрещает пинч — за него отвечают тег viewport
+   (Android/Chrome) и перехват gesture-событий (iOS), оба в index.html. */
+body {
+  touch-action: manipulation;
+  background-color: var(--chrome-bg);
+  background-image: var(--gradient-bg-primary);
+  background-repeat: no-repeat;
+  @apply text-content antialiased;
+  font-family:
+    'Manrope',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}
+
+/* СЕРАЯ ВСПЫШКА ПО ТАПУ. WebKit рисует поверх нажатого элемента собственный
+   полупрозрачный прямоугольник — он не повторяет скруглённые углы кнопки и
+   появляется РАНЬШЕ любого нашего состояния, поэтому тап по CTA, карточке
+   программы или чипу выдавал веб-страницу вернее всего остального.
+
+   Ставится на `*`, а не на `body`: свойство НЕ наследуется — WebKit берёт его
+   с того элемента, по которому пришёл тап, — так что значение на `body` до
+   вложенной кнопки не доходит. Тот же приём уже стоял точечно на
+   `.bottom-nav__link` (см. components/bottom-nav.css); здесь он распространён
+   на весь интерфейс, и дубль в таб-баре оставлен как локальная документация.
+
+   Взамен вспышки отклик на нажатие дают состояния `:active` в
+   components/controls.css — без них у нажатия не осталось бы обратной связи
+   вообще. */
+*,
+*::before,
+*::after {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ВЫДЕЛЕНИЕ ТЕКСТА. Гасится ТОЛЬКО у элементов управления: по долгому нажатию
+   на подпись кнопки iOS запускает выделение с системной «лупой» вместо
+   действия. У обычного текста выделение остаётся включённым НАМЕРЕННО —
+   сообщения поддержки, описания упражнений, заметки о клиенте, реферальный
+   код: потерять возможность скопировать текст хуже, чем лишняя «лупа».
+   Поэтому список селекторов перечислён явно и не расширяется до `body`.
+
+   `-webkit-touch-callout` здесь же: он гасит всплывающее меню по долгому
+   нажатию, отдельное от выделения. */
+button,
+[role='button'],
+label,
+summary,
+.segment-option,
+.bottom-nav__link {
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Поля ввода — исключение из правила выше: <label> у поля глушит выделение, но
+   набранный в поле текст пользователь обязан иметь возможность выделить и
+   скопировать (код из письма, ссылка, вес). */
+input,
+textarea,
+select {
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+/* ДОЛГИЙ ТАП ПО КАРТИНКЕ. Без этого iOS открывает системное меню «Сохранить
+   изображение / Копировать» поверх приложения — на фото прогресса, гифке
+   упражнения и превью в аналитике. Правило глобальное, потому что <img>
+   разбросаны по экранам (ExerciseMedia, PhotoPicker, MeasurementDetailModal,
+   AnalyticsPage), и точечные классы разъезжались бы с новыми местами. */
+img {
+  -webkit-touch-callout: none;
+}
+
+/* While a workout runs, the active-session plate stacks on top of the tab bar
+   and publishes its measured height as --active-plate-space
+   (ActiveWorkoutWidget). Both terms are added in here so floating notices
+   clear the plate as well as the tab bar. */
+html[data-active-plate='true'] {
+  --bottom-stack: calc(var(--tab-bar-space) + var(--active-plate-space, 0px));
+}
+/* Во время тренировки к месту под баром добавляется видимая над ним часть
+   плашки. Слагаемое --tab-bar-space обязательно: это правило переопределяет
+   --padding-bottom из .protected-shell .page-content, и без него контент
+   уезжал бы под сам бар. */
+html[data-active-plate='true'] .page-content {
+  --padding-bottom: calc(var(--tab-bar-space) + var(--active-plate-space, 4rem) + 0.5rem);
+}
+
+/* Keyboard overlap affects scrolling and overlays, never the page's flex height. */
+html[data-keyboard-open] {
+  --bottom-stack: var(--keyboard-overlap);
+}
+html[data-keyboard-open] .page-content {
+  --padding-bottom: max(var(--tab-bar-space), calc(var(--keyboard-overlap) + 16px));
+  scroll-padding-bottom: calc(var(--keyboard-overlap) + 16px);
+}
+html[data-keyboard-open] .dialog-backdrop {
+  bottom: var(--keyboard-overlap);
+}
+
+html[data-keyboard-open] .dialog .page-content {
+  --padding-bottom: 16px;
+  scroll-padding-bottom: 16px;
+}

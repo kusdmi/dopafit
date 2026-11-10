@@ -1,0 +1,238 @@
+@import 'tailwindcss';
+
+@import './fonts.css';
+@import './tokens.css';
+@import './base.css';
+
+/* HOVER ТОЛЬКО ТАМ, ГДЕ ЕСТЬ МЫШЬ.
+   По умолчанию Tailwind разворачивает `hover:` в чистый `:hover`, а на тач-
+   экране WebKit оставляет это состояние ВКЛЮЧЁННЫМ после тапа — подсветка
+   «висит» на нажатой строке, пока пользователь не тапнет в другое место, и
+   читается как застрявшее выделение. Переопределяем вариант один раз здесь,
+   а не правим места по одному: так и будущие `hover:` не залипнут, без
+   необходимости помнить про обёртку на каждом call site.
+   Отклик на нажатие для тача дают `:active` в components/controls.css. */
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
+/* Component classes. All of these files open `@layer components`, which sits
+   below Tailwind's `@layer utilities` — layered CSS is ranked by layer order
+   regardless of source position, so a utility at the call site outranks a
+   component class here without needing `!important` (see the note in
+   shared/ui/Button.tsx). `@layer` is additive: these separate blocks all append
+   to the one `components` layer, so the import order below is the source order
+   within it and decides only class-vs-class ties. */
+@import './components/fields.css';
+@import './components/animations.css';
+@import './components/layout.css';
+@import './components/bottom-nav.css';
+@import './components/controls.css';
+@import './components/overlays.css';
+
+/* Themes: the private custom properties that tokens.css aliases.
+   Dark is the source of truth and lives on bare `:root`; the light values are
+   redefined under `prefers-color-scheme` (system setting, no explicit choice)
+   and both are redefined again under `[data-theme]` so an explicit toggle wins
+   in either direction.
+
+   These blocks stay INLINE in this file rather than moving to a themes.css
+   beside the others: shared/lib/theme/surface.test.ts reads THIS path as text
+   and parses `--surface` out of the `[data-theme]` blocks, resolving the
+   `--neutral-*` step it points at. The theme blocks and the neutral scale must
+   therefore stay here, together, or that test stops seeing them.
+
+   They are also deliberately OUTSIDE any layer: they only declare custom
+   properties, which don't take part in the class-vs-utility conflict that the
+   component files are layered to resolve. */
+:root {
+  --safe-area-bottom: env(safe-area-inset-bottom);
+  --bottom-nav-height: 72px;
+  --bottom-nav-gutter: 16px;
+  --bottom-nav-inset: max(8px, var(--safe-area-bottom));
+  --tab-bar-space: calc(var(--bottom-nav-height) + var(--bottom-nav-inset));
+
+  /* Bottom band occupied by fixed chrome, used to position floating notices
+     (toast, storage error) clear of it. The active-session plate stacks on
+     top of the tab bar while a workout runs and publishes its measured height
+     as --active-plate-space (see ActiveWorkoutWidget); the override in
+     base.css adds it in. */
+  --bottom-stack: var(--tab-bar-space);
+
+  --header-space: calc(env(safe-area-inset-top) + 44px);
+
+  /* Warm neutral scale (R>B), Figma reference. */
+  --neutral-50: #fafaf8;
+  --neutral-100: #f2f0ec;
+  --neutral-200: #d9d9d9;
+  --neutral-300: #c2beb5;
+  --neutral-400: #9a9690;
+  --neutral-500: #6e6a64;
+  --neutral-600: #46433e;
+  --neutral-700: #27251f;
+  --neutral-800: #1e1c18; /* interpolated 700→900, not a Figma value */
+  --neutral-900: #161412;
+
+  /* Background gradients (main screen). The primary one is THEMED: it is the
+     page fill under `--content` text, so a fixed dark gradient would leave the
+     light theme with near-black text on a near-black page (contrast ~1.05:1).
+     The private `--gradient-primary` is redefined in every theme block and
+     `@theme` only aliases it. The accent overlay is an accent-on-dark
+     decoration with no text of its own, so it stays theme-independent. */
+  --gradient-bg-primary: var(--gradient-primary);
+  --gradient-bg-accent: linear-gradient(to bottom, #794299 0%, rgba(121, 66, 153, 0) 100%);
+  /* Opaque sibling of --gradient-bg-accent, for an accent plate that has
+     content BEHIND it rather than under it as decoration: the overlay gradient
+     fades to alpha 0, which let the page scrolling behind the active-workout
+     bar show through its lower half. Same violet, same top stop, but the
+     bottom stop is a darkened step of the same hue instead of transparency.
+     Fixed (not thematic) like the overlay it mirrors: it is an accent plate
+     carrying its own fixed light text. */
+  --gradient-bg-accent-solid: linear-gradient(to bottom, #794299 0%, #5c3275 100%);
+  /* Обводка плашки активной тренировки — тот же #794299, что и верхний стоп
+     её градиента (макет 392:5261), а НЕ серия 4 #C96EFF: в макете рамка
+     сливается с верхним краем заливки и лишь очерчивает низ, уходящий в
+     тёмный. Фиксированная, как и сама заливка. */
+  --accent-plate-line: #794299;
+
+  /* Dark theme is the source of truth (default). */
+  /* Figma background gradient (392:1962): warm top, neutral middle, cool
+     violet bottom. */
+  --chrome-bg: #1e1208;
+  --gradient-primary: linear-gradient(to bottom, var(--chrome-bg) 0%, #161412 45%, #0e0b1a 100%);
+  --surface: var(--neutral-900);
+  --card: var(--neutral-700);
+  --card-light: var(--neutral-600);
+  --line: var(--neutral-600);
+  --content: var(--neutral-50);
+  --muted: var(--neutral-400);
+  --success-soft-bg: color-mix(in srgb, var(--color-success-400) 22%, var(--neutral-900));
+  --success-soft-fg: var(--color-success-400);
+  /* Text-on-surface pairings for semantic/accent colors: dark theme keeps the
+     400 step (already AA-compliant against dark cards). */
+  --success-text: var(--color-success-400);
+  --danger-text: var(--color-danger-400);
+  --info-text: var(--color-info-400);
+  --brand-text: var(--color-brand-400);
+  --danger-on-card-light: var(--color-danger-100);
+  --trainer-text: var(--color-trainer-400);
+  --chart-4-text: var(--color-chart-4);
+  --chart-5-text: var(--color-chart-5);
+  /* Таб-бар (components/bottom-nav.css). Плашка бара и неактивная плитка —
+     собственные токены, а не --card/--card-light: бар лежит ПОВЕРХ контента,
+     поэтому ему нужен заведомо плотный тон, отличимый от поверхности, а плитка
+     на нём должна читаться в обеих темах. Здесь значения макета (нейтральные
+     700/600); светлые — в блоках светлой темы. Активная плитка в обеих темах
+     одна и та же — акцент 400 со светлым глифом: акцент фиксирован. */
+  --tab-bar-bg: var(--neutral-700);
+  --tab-bar-tile: var(--neutral-600);
+  --tab-bar-tile-fg: var(--neutral-50);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    /* Light theme = inversion of the warm scale: 50<->900, 100<->700, 600 stays
+       the readable-text step against light surfaces. */
+    /* Gradient mirrored onto the light end of the warm scale: warm top,
+       --neutral-50 middle, faintly cool violet bottom. `--content`
+       (--neutral-900) scores 17.15 / 17.58 / 16.54:1 on the three stops. */
+    --chrome-bg: #fdf6ef;
+    --gradient-primary: linear-gradient(to bottom, var(--chrome-bg) 0%, #fafaf8 45%, #f4f2f8 100%);
+    --surface: var(--neutral-50);
+    --card: var(--neutral-100);
+    --card-light: var(--neutral-200);
+    --line: var(--neutral-300);
+    --content: var(--neutral-900);
+    --muted: var(--neutral-600);
+    --success-soft-bg: var(--color-success-100);
+    --success-soft-fg: var(--color-success-600);
+    /* Text-on-surface pairings: step 400 fails WCAG AA against light cards
+       (2-4:1) — step 600 is Figma's on-light-text step and passes AA. */
+    --success-text: var(--color-success-600);
+    --danger-text: var(--color-danger-600);
+    --info-text: var(--color-info-600);
+    --brand-text: var(--color-brand-600);
+    --danger-on-card-light: var(--color-danger-600);
+    --trainer-text: var(--color-trainer-600);
+    --chart-4-text: #7a1fae;
+    --chart-5-text: #8a5a00;
+    /* Светлый таб-бар: плашка светлая, но отделена от поверхности скруглением и
+       более тёмными плитками. Неактивная плитка — --neutral-200, и глиф на ней
+       становится тёмным: светлый глиф на светлой плитке не прочитать. Активная
+       плитка не меняется — акцент 400 со светлым глифом. */
+    --tab-bar-bg: var(--neutral-50);
+    --tab-bar-tile: var(--neutral-200);
+    --tab-bar-tile-fg: var(--neutral-900);
+    color-scheme: light;
+  }
+}
+
+:root[data-theme='dark'] {
+  /* Figma background gradient (392:1962): warm top, neutral middle, cool
+     violet bottom. */
+  --chrome-bg: #1e1208;
+  --gradient-primary: linear-gradient(to bottom, var(--chrome-bg) 0%, #161412 45%, #0e0b1a 100%);
+  --surface: var(--neutral-900);
+  --card: var(--neutral-700);
+  --card-light: var(--neutral-600);
+  --line: var(--neutral-600);
+  --content: var(--neutral-50);
+  --muted: var(--neutral-400);
+  --success-soft-bg: color-mix(in srgb, var(--color-success-400) 22%, var(--neutral-900));
+  --success-soft-fg: var(--color-success-400);
+  --success-text: var(--color-success-400);
+  --danger-text: var(--color-danger-400);
+  --info-text: var(--color-info-400);
+  --brand-text: var(--color-brand-400);
+  --danger-on-card-light: var(--color-danger-100);
+  --trainer-text: var(--color-trainer-400);
+  --chart-4-text: var(--color-chart-4);
+  --chart-5-text: var(--color-chart-5);
+  /* Таб-бар (components/bottom-nav.css). Плашка бара и неактивная плитка —
+     собственные токены, а не --card/--card-light: бар лежит ПОВЕРХ контента,
+     поэтому ему нужен заведомо плотный тон, отличимый от поверхности, а плитка
+     на нём должна читаться в обеих темах. Здесь значения макета (нейтральные
+     700/600); светлые — в блоках светлой темы. Активная плитка в обеих темах
+     одна и та же — акцент 400 со светлым глифом: акцент фиксирован. */
+  --tab-bar-bg: var(--neutral-700);
+  --tab-bar-tile: var(--neutral-600);
+  --tab-bar-tile-fg: var(--neutral-50);
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  /* Gradient mirrored onto the light end of the warm scale: warm top,
+     --neutral-50 middle, faintly cool violet bottom. `--content`
+     (--neutral-900) scores 17.15 / 17.58 / 16.54:1 on the three stops. */
+  --chrome-bg: #fdf6ef;
+  --gradient-primary: linear-gradient(to bottom, var(--chrome-bg) 0%, #fafaf8 45%, #f4f2f8 100%);
+  --surface: var(--neutral-50);
+  --card: var(--neutral-100);
+  --card-light: var(--neutral-200);
+  --line: var(--neutral-300);
+  --content: var(--neutral-900);
+  --muted: var(--neutral-600);
+  --success-soft-bg: var(--color-success-100);
+  --success-soft-fg: var(--color-success-600);
+  --success-text: var(--color-success-600);
+  --danger-text: var(--color-danger-600);
+  --info-text: var(--color-info-600);
+  --brand-text: var(--color-brand-600);
+  --danger-on-card-light: var(--color-danger-600);
+  --trainer-text: var(--color-trainer-600);
+  --chart-4-text: #7a1fae;
+  --chart-5-text: #8a5a00;
+  /* Светлый таб-бар: плашка светлая, но отделена от поверхности скруглением и
+     более тёмными плитками. Неактивная плитка — --neutral-200, и глиф на ней
+     становится тёмным: светлый глиф на светлой плитке не прочитать. Активная
+     плитка не меняется — акцент 400 со светлым глифом. */
+  --tab-bar-bg: var(--neutral-50);
+  --tab-bar-tile: var(--neutral-200);
+  --tab-bar-tile-fg: var(--neutral-900);
+  color-scheme: light;
+}

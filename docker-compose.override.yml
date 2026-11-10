@@ -1,0 +1,12 @@
+# Dev-only overrides, applied automatically by `docker compose`.
+# The base file already mounts the repository into every service, so this only
+# exposes the backing services to the host (psql, MinIO console, direct clients).
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  minio:
+    ports:
+      - "9000:9000"
+      - "9001:9001"

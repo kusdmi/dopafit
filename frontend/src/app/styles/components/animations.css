@@ -1,0 +1,38 @@
+/* Shared animations. `.animate-fade-in` is a custom class, not a Tailwind
+   utility, so it lives in `@layer components` like the rest — utilities must
+   be able to override it. @keyframes names are global and unaffected by which
+   layer references them; they are kept beside their class for locality. */
+@layer components {
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 160ms ease-out both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-in {
+      animation: none;
+    }
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes pulse {
+    to {
+      opacity: 0.45;
+    }
+  }
+}

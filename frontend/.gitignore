@@ -1,0 +1,9 @@
+# Local TLS certs for previewing the PWA over HTTPS on a phone (mkcert)
+*.pem
+
+# Capacitor native platforms. The config, plugins and platform adapters are kept,
+# but the generated ios/ and android/ projects are not committed: they are
+# regenerated with `npx cap add ios` / `npx cap add android` when native builds
+# resume. See docs/DEVELOPMENT.md §10.
+ios/
+android/

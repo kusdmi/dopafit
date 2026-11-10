@@ -1,0 +1,2 @@
+ALTER TABLE "subscriptions" ALTER COLUMN "ends_at" DROP NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "uq_subscriptions_active_open_term" ON "subscriptions" USING btree ("user_id") WHERE ends_at IS NULL AND status = 'active';

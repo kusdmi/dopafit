@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    // support/paths.ts re-exports the frontend route table straight from its
+    // source file, which Playwright's own TypeScript loader resolves.
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "types": ["node"],
+    "paths": {
+      "@frontend/*": ["../frontend/src/*"]
+    }
+  },
+  "include": ["fixtures", "specs", "support", "scripts", "*.ts", "eslint.config.js"]
+}

@@ -1,0 +1,60 @@
+# Test stand (stage 15.1). External Postgres and S3 are configured via .env.prod
+# (kept on the VPS next to this file; never committed to git).
+# Images are built locally and pushed to the VPS by deploy.sh.
+#
+# Registry-ready (stage 15.2): the image is addressed via DOPAFIT_IMAGE_PREFIX /
+# DOPAFIT_IMAGE_TAG (compose variable interpolation). Defaults = the local image
+# name used by deploy.sh; when moving to CI/CD set those variables in
+# ~/dopafit/.env (e.g. ghcr.io/<org>/dopafit + git-sha) — this file needs no changes.
+name: dopafit
+
+x-app-base: &app-base
+  image: ${DOPAFIT_IMAGE_PREFIX:-dopafit}-app:${DOPAFIT_IMAGE_TAG:-latest}
+  env_file: .env.prod
+  # CA certificates (e.g. the managed-Postgres root cert for
+  # DOPAFIT_DATABASE_SSL_ROOT_CERT) live on the VPS in ~/dopafit/certs, outside git.
+  volumes:
+    - ./certs:/certs:ro
+
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    # The domain lives in ~/dopafit/.env on the VPS (compose reads it
+    # automatically), NOT in the repo. :? makes the stack refuse to start without it.
+    environment:
+      DOPAFIT_APP_DOMAIN: ${DOPAFIT_APP_DOMAIN:?set DOPAFIT_APP_DOMAIN in ~/dopafit/.env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./conf.d:/etc/caddy/conf.d:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+  # One image serves both the API and the PWA, so they share an origin and the
+  # browser needs no CORS. Background jobs run in-process.
+  app:
+    <<: *app-base
+    restart: unless-stopped
+    # Behind Caddy: trust X-Forwarded-For so per-IP rate limits see real client IPs.
+    # Safe here — the app port is not published; only Caddy reaches it.
+    environment:
+      DOPAFIT_TRUST_PROXY: "true"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  migrate:
+    <<: *app-base
+    # One-shot. If it exits non-zero, the app stays blocked on the next `up`:
+    # fix the cause, then `docker compose -f docker-compose.prod.yml run --rm migrate`.
+    command: node backend/dist/platform/db/migrate.js
+    restart: "no"
+
+volumes:
+  caddy_data:
+  caddy_config:

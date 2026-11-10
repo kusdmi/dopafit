@@ -1,0 +1,220 @@
+/* Design-system tokens: the Tailwind `@theme` namespace.
+   Colors here are mostly ALIASES onto the private `--*` custom properties
+   defined in the theme blocks at the bottom of index.css — that indirection is
+   what lets a token follow the theme while `@theme` itself stays a single,
+   static declaration block. */
+@theme {
+  /* Accent scale ("Основной цвет"), base = step 400 (#FF7003). */
+  --color-brand-50: #fff0e6;
+  --color-brand-400: #ff7003;
+  --color-brand-500: #d95c00;
+  --color-brand-600: #a84700;
+
+  /* "The accent color" — the scale's base step (400), matching the Figma
+     reference mark. This is for FILLS (buttons, chips) — white text sits on
+     top in both themes, so it stays 400 regardless of theme. For accent-
+     coloured TEXT on a card/surface background use --color-brand-text
+     instead, which is thematic. */
+  --color-brand: var(--color-brand-400);
+  --color-brand-text: var(--brand-text);
+
+  --color-trainer-400: #a78bfa;
+  --color-trainer-500: #8b5cf6;
+  --color-trainer-600: #7c3aed;
+  /* Thematic step for the trainer hue used as a MARK on a card (the client
+     marker in the calendar, its legend swatch). Fixed trainer-500 sits at
+     2.33:1 on the dark --card-light and 3.00:1 on the light one, at or under
+     the 3:1 floor for non-text graphics; the step flips with the theme the
+     way --brand-text does — 400 on dark (3.62:1), 600 on light (4.04:1).
+     Plain trainer-400/500/600 stay for borders and fills. */
+  --color-trainer-text: var(--trainer-text);
+
+  --color-logo: #006ffd;
+  --color-logo-fg: #f4f5f7;
+
+  /* Semantic colors: 100 = soft tint, 400 = base, 600 = strong/on-light-text.
+     --color-success/-danger/-info are THEMATIC (see index.css):
+     dark theme → 400, light theme → 600. Step 400 reads at ~2-4:1 contrast
+     against the light --card, well under WCAG AA for text; step 600 is the
+     step Figma marks for on-light text and passes AA. Dark theme keeps 400
+     because that pairing is already compliant.
+     For a SOLID FILL with white/light text on top (badges, filled buttons),
+     use the explicit *-fill alias instead — fills stay on 400 in both themes;
+     only text-on-surface pairings need to shift with the theme. */
+  --color-success-100: #d4f0d4;
+  --color-success-400: #2ca44e;
+  --color-success-600: #1a6b32;
+  --color-success: var(--success-text);
+  --color-success-fill: var(--color-success-400);
+
+  --color-danger-100: #ffe0e0;
+  --color-danger-400: #e53535;
+  --color-danger-600: #a82020;
+  --color-danger: var(--danger-text);
+  --color-danger-fill: var(--color-danger-400);
+  /* Danger for a mark sitting on --card-light, one step lighter than --card.
+     --color-danger there is 2.29:1 in the dark theme (danger-400 #E53535 on
+     neutral-600 #46433E), under the 3:1 floor for non-text graphics; the
+     dark theme therefore takes the soft step 100 (7.97:1) instead of 400.
+     The light theme keeps step 600 on neutral-200 (5.14:1). */
+  --color-danger-on-card-light: var(--danger-on-card-light);
+
+  --color-info-100: #ffe5d0;
+  --color-info-400: #f5a623;
+  --color-info-600: #b57800;
+  --color-info: var(--info-text);
+  --color-info-fill: var(--color-info-400);
+
+  --color-success-soft-bg: var(--success-soft-bg);
+  --color-success-soft-fg: var(--success-soft-fg);
+
+  /* Chart series palette (design-system.md "Серии графиков"). These are the
+     line/marker colors, deliberately theme-independent so a series keeps its
+     identity in both themes. */
+  --color-chart-1: var(--color-brand-400);
+  --color-chart-2: #3b9eff;
+  --color-chart-3: #2cd08a;
+  --color-chart-4: #c96eff;
+  --color-chart-5: #ffd23f;
+  --color-chart-6: #ff5c8a;
+
+  /* Readable foreground for TEXT PAINTED ON a series color used as a solid
+     fill (the parameter buttons in AnthropometryForm). The palette spans a
+     wide luminance range, so a single foreground cannot serve all six:
+     --neutral-50 on chart-3 (#2CD08A) is 1.91:1 and on chart-5 (#FFD23F) only
+     1.38:1 — both unreadable. Each fill therefore carries its own foreground,
+     picked as whichever of --neutral-50 / --neutral-900 scores higher:
+
+       chart-1 #FF7003 → neutral-50   2.65:1  (the accent pairing the design
+                                               system already accepts — see
+                                               "Известные ограничения контраста")
+       chart-2 #3B9EFF → neutral-50   2.67:1  (same band as the accent)
+       chart-3 #2CD08A → neutral-900  9.18:1
+       chart-4 #C96EFF → neutral-50   2.81:1
+       chart-5 #FFD23F → neutral-900 12.72:1
+       chart-6 #FF5C8A → neutral-50   2.81:1
+
+     Like the fills themselves these are fixed, not thematic: the fill does not
+     change between themes, so its foreground must not either. */
+  /* Thematic TEXT alias for the violet series color ("Ан - Фиол." #C96EFF).
+     chart-4 itself is a fixed fill hue with no light variant: as TEXT on a card
+     it scores 5.22:1 in the dark theme but only 2.58:1 in the light one, well
+     under WCAG AA. The private --chart-4-text is redefined in all four theme
+     blocks (400-level hue in dark, a darkened step of the SAME hue in light)
+     and @theme only aliases it.
+     Use `text-chart-4-text` / `border-chart-4-text` wherever the violet is the
+     text or the outline on a card; keep plain `chart-4` for FILLS, where it is
+     paired with the contrasting --color-chart-4-fg, and for chart series lines,
+     which must stay identical across themes. */
+  --color-chart-4-text: var(--chart-4-text);
+  /* Thematic TEXT alias for the yellow series color ("Ан - Жёлт." #FFD23F),
+     same architecture as --chart-4-text above. Used by the "Отвязать клиента"
+     button, which is yellow by design (the mock marks it as non-destructive,
+     unlike the red "Удалить"). The fixed hue is bright, so the failure is the
+     mirror of chart-4's: it is excellent on dark (10.61:1 on --card) and all
+     but invisible on light (1.27:1) — far under the 4.5:1 floor for text and
+     the 3:1 one for the button's own outline. Dark keeps #FFD23F; light takes
+     a darkened step of the SAME hue, #8A5A00, at 5.21:1 on --card.
+     Keep plain `chart-5` for FILLS (paired with --color-chart-5-fg) and for
+     chart series lines, which must stay identical across themes. */
+  --color-chart-5-text: var(--chart-5-text);
+
+  --color-chart-1-fg: var(--neutral-50);
+  --color-chart-2-fg: var(--neutral-50);
+  --color-chart-3-fg: var(--neutral-900);
+  --color-chart-4-fg: var(--neutral-50);
+  --color-chart-5-fg: var(--neutral-900);
+  --color-chart-6-fg: var(--neutral-50);
+
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-card-light: var(--card-light);
+  --color-line: var(--line);
+  --color-content: var(--content);
+  --color-muted: var(--muted);
+
+  /* Neutral scale aliases: exposes the private `--neutral-*` steps (index.css)
+     as Tailwind color tokens, so components can write `border-neutral-500`
+     instead of the arbitrary-value escape hatch `border-[var(--neutral-500)]`.
+     This intentionally SHADOWS Tailwind's built-in `neutral` palette (gray-ish,
+     unrelated hex values) for the whole app — deliberate, not an accident: the
+     design system has its own warm neutral scale and no screen should ever
+     reach for stock Tailwind gray. `@theme` tree-shakes unused steps, so only
+     the ones actually referenced by a class in the codebase reach the
+     generated CSS. */
+  --color-neutral-50: var(--neutral-50);
+  --color-neutral-100: var(--neutral-100);
+  --color-neutral-200: var(--neutral-200);
+  --color-neutral-300: var(--neutral-300);
+  --color-neutral-400: var(--neutral-400);
+  --color-neutral-500: var(--neutral-500);
+  --color-neutral-600: var(--neutral-600);
+  --color-neutral-700: var(--neutral-700);
+  --color-neutral-800: var(--neutral-800);
+  --color-neutral-900: var(--neutral-900);
+
+  --radius-card: 1rem;
+
+  /* Elevation. A shadow encodes HEIGHT ABOVE THE SCREEN, nothing else — see
+     design-system.md "Тени". Two levels only: `raised` for the one action
+     floating over the page background, `overlay` for something covering the
+     content (dialog, toast). Anything sitting inside a card is in the flow and
+     carries no shadow at all.
+
+     Figma's own values (0 20px 25px for the solid CTA, 0 20px 50px for the
+     outline one) are deliberately not kept: a 20px offset under a 25px blur
+     reads as a detached dark smear below the button rather than as lift, and
+     giving two variants of the SAME control different blurs encodes a
+     difference in level that does not exist. */
+  --shadow-raised: 0 6px 16px rgba(0, 0, 0, 0.18);
+  --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.28);
+
+  /* Typography roles (Manrope), emitted as Tailwind v4 font-size tokens
+     (`--text-*`). This namespace is what generates `.text-<role>` utilities
+     bundling size + line-height + weight; a custom `--font-*` namespace
+     means font-family and is tree-shaken away with unknown suffixes.
+     line-height is 100% in Figma → unitless 1. */
+  --text-display: 26px;
+  --text-display--line-height: 1;
+  --text-display--font-weight: 800;
+
+  --text-h1: 22px;
+  --text-h1--line-height: 1;
+  --text-h1--font-weight: 700;
+
+  --text-h2: 18px;
+  --text-h2--line-height: 1;
+  --text-h2--font-weight: 700;
+
+  --text-h3: 16px;
+  --text-h3--line-height: 1;
+  --text-h3--font-weight: 600;
+
+  --text-stat: 26px;
+  --text-stat--line-height: 1;
+  --text-stat--font-weight: 700;
+
+  --text-stat-s: 20px;
+  --text-stat-s--line-height: 1;
+  --text-stat-s--font-weight: 700;
+
+  --text-body-m: 14px;
+  --text-body-m--line-height: 1;
+  --text-body-m--font-weight: 400;
+
+  --text-body-s: 13px;
+  --text-body-s--line-height: 1;
+  --text-body-s--font-weight: 400;
+
+  --text-label: 12px;
+  --text-label--line-height: 1;
+  --text-label--font-weight: 500;
+
+  --text-caption: 11px;
+  --text-caption--line-height: 1;
+  --text-caption--font-weight: 400;
+
+  --text-tag: 11px;
+  --text-tag--line-height: 1;
+  --text-tag--font-weight: 600;
+}

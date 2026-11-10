@@ -1,0 +1,79 @@
+@layer components {
+  .bottom-nav {
+    position: fixed;
+    inset: auto 0 0;
+    padding: 0 var(--bottom-nav-gutter) var(--bottom-nav-inset);
+    z-index: 41;
+    pointer-events: none;
+  }
+  .bottom-nav__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    height: var(--bottom-nav-height);
+    padding: 14px 12px;
+    border-radius: 20px;
+    background: var(--tab-bar-bg);
+    box-shadow: var(--shadow-overlay);
+    pointer-events: auto;
+  }
+  .bottom-nav__link {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    height: 44px;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bottom-nav__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 15px;
+    background: var(--tab-bar-tile);
+    color: var(--tab-bar-tile-fg);
+    transition:
+      background-color 150ms ease-out,
+      transform 80ms ease-out,
+      opacity 80ms ease-out;
+  }
+  .bottom-nav__icon svg {
+    width: 40px;
+    height: 40px;
+  }
+  .bottom-nav__link--active .bottom-nav__icon {
+    background: var(--color-brand-400);
+    color: var(--neutral-50);
+  }
+  /* Keep feedback inside the rounded tile; never paint the link's wider box. */
+  .bottom-nav__link:active .bottom-nav__icon {
+    transform: scale(0.96);
+    opacity: 0.8;
+  }
+  .bottom-nav__link:focus-visible {
+    outline: none;
+  }
+  .bottom-nav__link:focus-visible .bottom-nav__icon {
+    outline: 2px solid var(--color-brand-400);
+    outline-offset: 3px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bottom-nav__icon {
+      transition: none;
+    }
+    .bottom-nav__link:active .bottom-nav__icon {
+      transform: none;
+    }
+  }
+  [data-keyboard-open] .bottom-nav,
+  [data-keyboard-open] .active-workout-plate {
+    visibility: hidden;
+    pointer-events: none;
+  }
+}

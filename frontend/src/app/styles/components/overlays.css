@@ -1,0 +1,210 @@
+/* Things that float above the page: dialogs, the toast and the storage-error
+   notice — plus the small presentational bits (avatar, skeleton, spinner) that
+   share their animations. */
+@layer components {
+  .app-update-notice {
+    position: fixed;
+    inset: auto 16px calc(var(--bottom-stack, var(--tab-bar-space)) + 12px);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--card);
+    box-shadow: var(--shadow-overlay);
+  }
+  .avatar {
+    overflow: hidden;
+    border-radius: 50%;
+  }
+  .skeleton-block {
+    margin: 4px 0;
+    border-radius: 15px;
+    background: var(--card-light);
+    animation: pulse 1.5s ease-in-out infinite alternate;
+  }
+  .spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  .dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* NO safe-area padding here. It used to sit on the backdrop, but the
+       backdrop is the sizing parent for every dialog, so its padding shrank the
+       box that `height: 100%` and `max-height: 100%` resolve against — the
+       full-screen .dialog stopped short of the top and bottom edges by the two
+       insets and let the translucent backdrop show through underneath, which is
+       most obvious on an iOS device with rounded corners and a gesture bar.
+       The inset belongs to whichever dialog is actually inset (see
+       .dialog--floating below); a dialog that means to cover the screen has to
+       be able to reach the screen. */
+    /* Затемнение, а не тонировка «цветом контента». Раньше здесь стоял
+       color-mix(var(--content) 35%): в СВЕТЛОЙ теме --content тёмный и подложка
+       действительно затемняла, но в тёмной теме тот же токен — почти белый
+       (neutral-50), и фон под модалкой ЗАСВЕТЛЯЛСЯ. Скрим должен уводить
+       страницу назад в обеих темах, поэтому цвет фиксированный чёрный, как у
+       теней (--shadow-overlay), а не тематический. */
+    background: rgb(0 0 0 / 55%);
+  }
+  /* Общая коробка плавающей карточки — попапа и диалога подтверждения.
+     Во всю ширину экрана за вычетом полей страницы (24px, как .page-padding),
+     но не шире контентной колонки приложения (max-w-md = 448px): на телефоне
+     карточка идёт по краям контента под ней, на планшете и в вебе не
+     растягивается через весь экран. Макетные 350px (1119:2607) не фиксируем по
+     той же причине. */
+  .dialog-backdrop {
+    --dialog-card-width: calc(100% - 48px);
+    --dialog-card-max-width: 448px;
+    --dialog-card-radius: 25px;
+  }
+  .dialog {
+    display: flex;
+    flex-direction: column;
+    width: var(--width, 100%);
+    max-width: var(--max-width, 640px);
+    height: var(--height, 100%);
+    max-height: 100%;
+    overflow-y: auto;
+    background: var(--card);
+    color: var(--content);
+    border-radius: var(--border-radius, 0);
+  }
+  /* Dialogs that float as a card rather than covering the screen: they are the
+     ones that must keep clear of the notch and the home indicator, so they take
+     the inset the backdrop no longer applies. `max-height` is reduced by the
+     same amount, so a tall card still scrolls inside the safe box instead of
+     running under the indicator. */
+  .dialog--floating {
+    margin: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    max-height: calc(100% - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+  .dialog .page-content {
+    height: auto;
+  }
+  /* Overlay elevation: the confirm dialog floats over the page, unlike the
+     full-height .dialog, which covers it edge to edge and needs no lift.
+
+     This rule is the SINGLE source of truth for the confirm dialog's box.
+     ConfirmDialog.tsx deliberately passes no `--width`/`--max-width`/
+     `--height`/`--border-radius`: those are only the fallbacks in the `.dialog`
+     declarations above, and this more specific rule wins over every one of
+     them, so an inline value would be dead code that merely looks authoritative.
+     Change the size here. */
+  .dialog.confirm-dialog {
+    /* Коробка — ТА ЖЕ, что у .dialog--popup ниже: ширина по краям контентной
+       колонки и радиус 25px. Раньше здесь стояли свои 360px/15px, и диалог
+       подтверждения («Выйти из аккаунта?», «Отвязать клиента?») выходил заметно
+       уже и острее соседних попапов — два разных окна одного приложения. Общий
+       размер задаётся переменными, чтобы правила не разъехались снова. */
+    width: var(--dialog-card-width);
+    max-width: var(--dialog-card-max-width);
+    height: auto;
+    border-radius: var(--dialog-card-radius);
+    box-shadow: var(--shadow-overlay);
+  }
+  /* Попап (Figma 1119:2607 / 392:2618 / 392:2820): короткий список или форма в
+     пару полей, которым полноэкранный лист не нужен — карточка по центру, как
+     .confirm-dialog, но по макету шире (350px), со скруглением 25px и своим
+     паддингом.
+
+     Как и у .confirm-dialog выше, ЭТО единственный источник истины по коробке:
+     правило специфичнее объявлений `var(--width, …)` внутри `.dialog`, поэтому
+     инлайновые --width/--max-width/--height/--border-radius сюда не долетят.
+     Размер менять здесь.
+
+     max-height 70vh + overflow-y от .dialog: список замеров укладывается
+     целиком, а длинный край (все поля дубликата, насыщенный день тренера)
+     скроллится внутри карточки, а не растягивает её за экран. */
+  .dialog.dialog--popup {
+    width: var(--dialog-card-width);
+    max-width: var(--dialog-card-max-width);
+    height: auto;
+    max-height: 70vh;
+    border-radius: var(--dialog-card-radius);
+    box-shadow: var(--shadow-overlay);
+  }
+  .toast {
+    position: fixed;
+    bottom: calc(var(--bottom-stack) + 16px);
+    left: 16px;
+    right: 16px;
+    margin: auto;
+    max-width: 600px;
+    z-index: 150;
+    padding: 14px 18px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--card);
+    color: var(--content);
+    box-shadow: var(--shadow-overlay);
+    animation: toast-in 160ms ease-out both;
+  }
+  /* Свой keyframe, а не общий `fade-in`: тот сдвигает на 2px и обслуживает
+     контент В ПОТОКЕ страницы. Toast прижат к нижней кромке над меню — у
+     всплывающего снизу элемента 2px читаются как «проявился», а не «всплыл»,
+     поэтому здесь 8px от края. Длительность та же, 160ms ease-out. */
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  /* Выход зеркалит вход. Его включает атрибут data-leaving, который FeedbackHost
+     ставит за 160ms до размонтирования, — само по себе CSS проиграть выход не
+     может, элемент просто исчезает из DOM. */
+  .toast[data-leaving] {
+    animation: toast-out 160ms ease-in both;
+  }
+  @keyframes toast-out {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+  .storage-error-notice {
+    animation: toast-in 160ms ease-out both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .toast,
+    .toast[data-leaving],
+    .storage-error-notice {
+      animation: none;
+    }
+  }
+  .storage-error-notice {
+    position: fixed;
+    inset: auto 12px calc(var(--bottom-stack) + 12px);
+    z-index: 160;
+    padding: 12px;
+    border: 2px solid var(--color-danger);
+    border-radius: 12px;
+    background: var(--card);
+    color: var(--content);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-block,
+    .spinner {
+      animation: none;
+    }
+  }
+}

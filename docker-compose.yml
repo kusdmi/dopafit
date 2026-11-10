@@ -1,0 +1,199 @@
+name: dopafit
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: dopafit
+      POSTGRES_PASSWORD: dopafit
+      POSTGRES_DB: dopafit
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dopafit -d dopafit"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - pgdata:/var/lib/postgresql
+  minio:
+    # Community build of the official release; upstream no longer publishes images.
+    image: ghcr.io/coollabsio/minio:RELEASE.2025-10-15T17-29-55Z@sha256:69b55a1c1c5dc285ce04db96689f5b2102317fc77a50680a1874ca6efd1c87f9
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: dopafit
+      MINIO_ROOT_PASSWORD: dopafit-minio
+    volumes:
+      - miniodata:/data
+  # Base service for one-off commands (lint/test/build/codegen). The app services
+  # below extend it so every container shares one dependency install.
+  workspace:
+    build: { context: ., target: dev }
+    working_dir: /app
+    environment: &env
+      DOPAFIT_DATABASE_URL: postgresql://dopafit:dopafit@postgres:5432/dopafit
+      DOPAFIT_TEST_DATABASE_URL: postgresql://dopafit:dopafit@postgres:5432/dopafit_test
+      DOPAFIT_ENVIRONMENT: test
+      DOPAFIT_S3_ENDPOINT: http://minio:9000
+      DOPAFIT_S3_PUBLIC_ENDPOINT: http://localhost:9000
+      DOPAFIT_S3_ACCESS_KEY: dopafit
+      DOPAFIT_S3_SECRET_KEY: dopafit-minio
+      DOPAFIT_S3_BUCKET: measurements
+      OPENAPI_SPEC: /app/contracts/openapi.json
+      VITE_API_URL: ""
+    volumes: &volumes
+      - .:/app
+      - node_modules:/app/node_modules
+      - backend_modules:/app/backend/node_modules
+      # The e2e package installs into the same named volume the `e2e` service
+      # reads, so `make deps` (which runs here) populates it and neither
+      # @playwright/test nor its browsers land on the host.
+      - e2e_modules:/app/e2e/node_modules
+      - frontend_modules:/app/frontend/node_modules
+  backend:
+    extends: workspace
+    command: pnpm --filter dopafit-backend dev
+    ports: ["8000:8000"]
+    environment:
+      <<: *env
+      DOPAFIT_ENVIRONMENT: dev
+      # Optional real integrations only for dev; isolated tests keep logging/fixed codes.
+      DOPAFIT_NOTIFICATION_PROVIDER: ${DOPAFIT_NOTIFICATION_PROVIDER:-logging}
+      DOPAFIT_DEV_VERIFICATION_CODE: ${DOPAFIT_DEV_VERIFICATION_CODE-000000}
+      DOPAFIT_SMTP_HOST: ${DOPAFIT_SMTP_HOST:-}
+      DOPAFIT_SMTP_PORT: ${DOPAFIT_SMTP_PORT:-587}
+      DOPAFIT_SMTP_USER: ${DOPAFIT_SMTP_USER:-auth@dopafit.ru}
+      DOPAFIT_SMTP_PASSWORD: ${DOPAFIT_SMTP_PASSWORD:-}
+      DOPAFIT_SMARTCAPTCHA_SITE_KEY: ${DOPAFIT_SMARTCAPTCHA_SITE_KEY:-}
+      DOPAFIT_SMARTCAPTCHA_SECRET_KEY: ${DOPAFIT_SMARTCAPTCHA_SECRET_KEY:-}
+      DOPAFIT_SMARTCAPTCHA_ALLOWED_HOSTS: ${DOPAFIT_SMARTCAPTCHA_ALLOWED_HOSTS:-localhost}
+    depends_on:
+      postgres: {condition: service_healthy}
+      minio: {condition: service_started}
+  frontend:
+    extends: workspace
+    command: pnpm --filter dopafit-frontend dev --host 0.0.0.0
+    ports: ["5173:5173"]
+  # ---- Isolated e2e stand (docs/DEVELOPMENT.md; `make e2e-up`) ----
+  # A separate backend + frontend pair on its own database, because a run that is
+  # allowed to drop its database would otherwise destroy the developer's dev state:
+  # one DOPAFIT_DATABASE_URL per container means the dev stand cannot be shared.
+  # Host ports are offset by 100 so both stands can run side by side.
+  backend-e2e:
+    extends: workspace
+    command: pnpm --filter dopafit-backend dev
+    ports: ["8100:8000"]
+    environment:
+      <<: *env
+      DOPAFIT_ENVIRONMENT: dev
+      DOPAFIT_DATABASE_URL: postgresql://dopafit:dopafit@postgres:5432/dopafit_e2e
+      # The fixed code is a dev default already; spelling it out keeps the stand
+      # working if that default ever changes.
+      DOPAFIT_DEV_VERIFICATION_CODE: "000000"
+      DOPAFIT_E2E_ROTATING_VERIFICATION_CODE: "true"
+      DOPAFIT_VERIFICATION_CODE_TTL_MINUTES: "1"
+      # Code-send limits exist to slow a human down. A suite that registers
+      # several accounts per run would hit all of them within seconds.
+      DOPAFIT_CODE_SEND_MIN_INTERVAL_SECONDS: "0"
+      # Three sends permit registration plus two resends; the next one must
+      # expose the real Retry-After path to AUTH-05.
+      DOPAFIT_CODE_SEND_MAX_PER_CONTACT_HOUR: "3"
+      DOPAFIT_CODE_SEND_MAX_PER_CONTACT_DAY: "1000"
+      DOPAFIT_CODE_SEND_MAX_PER_IP_HOUR: "1000"
+      # Истечение сессии проверяется прогоном, а не ожиданием 15 минут: 1 —
+      # минимум, который допускает схема конфигурации (integer(..., minimum: 1)).
+      DOPAFIT_ACCESS_TOKEN_TTL_MINUTES: "1"
+      DOPAFIT_CORS_ORIGINS: '["http://frontend-e2e:5173"]'
+      # The mock payment provider returns here with ?payment_id=mock_... .
+      DOPAFIT_SUBSCRIPTION_EXTERNAL_URL: http://frontend-e2e:5173/subscription
+    # The suite starts the moment the container is up, so "started" is not enough:
+    # tsx still has to boot and bind :8000, and a test that races that boot fails
+    # on a proxy ECONNREFUSED rather than on the product.
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    depends_on:
+      postgres: {condition: service_healthy}
+      minio: {condition: service_started}
+  frontend-e2e:
+    extends: workspace
+    command: pnpm --filter dopafit-frontend dev --host 0.0.0.0
+    ports: ["5273:5173"]
+    environment:
+      <<: *env
+      # MSW would answer every request in the browser and the suite would test
+      # mocks instead of the product.
+      VITE_API_MOCK: "false"
+      # Without this the dev proxy keeps its hardcoded dev target and the stand
+      # would silently write into the developer's database (see vite.config.ts).
+      VITE_DEV_API_PROXY: http://backend-e2e:8000
+      # Public half of a disposable e2e-only VAPID key. The private half is not
+      # needed: tests register a subscription but never send a push.
+      VITE_VAPID_PUBLIC_KEY: BOuTPXuRGrzxCatB01-qqsGxNSD94nKOQmK02ZeVQBc46YpJ973aKDZlBAxv5S5YMLZ7CtctKDx8uZIiesjm_NE
+  frontend-e2e-pwa:
+    extends: workspace
+    command: pnpm --filter dopafit-frontend preview --host 0.0.0.0 --port 4173
+    ports: ["4173:4173"]
+    environment:
+      <<: *env
+      VITE_API_MOCK: "false"
+      VITE_DEV_API_PROXY: http://backend-e2e:8000
+      VITE_DEV_ALLOWED_HOSTS: frontend-e2e-pwa,localhost
+      # A valid public key is required by PushManager.subscribe in PWA-06.
+      VITE_VAPID_PUBLIC_KEY: BOuTPXuRGrzxCatB01-qqsGxNSD94nKOQmK02ZeVQBc46YpJ973aKDZlBAxv5S5YMLZ7CtctKDx8uZIiesjm_NE
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:4173/manifest.webmanifest').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    depends_on:
+      backend-e2e: {condition: service_healthy}
+  e2e:
+    build: {context: ., target: e2e}
+    working_dir: /app/e2e
+    # Chromium gets a 64 MB /dev/shm in a container and crashes on larger pages.
+    ipc: host
+    # Only `make e2e-report` publishes this (via --service-ports); a plain run
+    # does not, so two runs never collide on a bound host port.
+    ports: ["9323:9323"]
+    environment:
+      E2E_BASE_URL: http://frontend-e2e:5173
+      E2E_API_URL: http://backend-e2e:8000
+      # The runner has its own environment, so the CI flag has to be passed in
+      # explicitly. playwright.config.ts keys four things off it, and the one that
+      # matters most is `forbidOnly`: without the flag a stray `test.only` would
+      # silently narrow the CI run to a single test instead of failing the job.
+      CI: ${CI:-}
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - e2e_modules:/app/e2e/node_modules
+      - frontend_modules:/app/frontend/node_modules
+    depends_on:
+      frontend-e2e: {condition: service_started}
+      backend-e2e: {condition: service_healthy}
+  # This runner sees preview as localhost, which Chromium trusts for service
+  # workers and notification permissions without a private CA or browser flags.
+  e2e-pwa:
+    build: {context: ., target: e2e}
+    working_dir: /app/e2e
+    ipc: host
+    network_mode: service:frontend-e2e-pwa
+    environment:
+      E2E_BASE_URL: http://localhost:4173
+      E2E_API_URL: http://backend-e2e:8000
+      CI: ${CI:-}
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - e2e_modules:/app/e2e/node_modules
+      - frontend_modules:/app/frontend/node_modules
+    depends_on:
+      frontend-e2e-pwa: {condition: service_healthy}
+      backend-e2e: {condition: service_healthy}
+volumes:
+  pgdata:
+  miniodata:
+  node_modules:
+  backend_modules:
+  e2e_modules:
+  frontend_modules:

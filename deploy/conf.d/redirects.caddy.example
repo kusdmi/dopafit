@@ -1,0 +1,9 @@
+# Copy to ~/dopafit/conf.d/redirects.caddy on the VPS. Caddy imports every
+# *.caddy file from that directory (a file ending in .example is ignored).
+# List any number of alias domains; Caddy issues certificates for them
+# automatically. DNS: point each alias's A record at this VPS.
+# Apply changes with: docker compose -f docker-compose.prod.yml restart caddy
+
+alias-one.example.com, alias-two.example.com {
+	redir https://app.example.com{uri} permanent
+}

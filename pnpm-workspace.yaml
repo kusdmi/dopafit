@@ -1,0 +1,7 @@
+packages:
+  - backend
+  - e2e
+  - frontend
+onlyBuiltDependencies:
+  - esbuild
+  - sharp

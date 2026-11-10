@@ -1,0 +1,2 @@
+ALTER TABLE "payments" DROP CONSTRAINT "ck_payments_status";--> statement-breakpoint
+ALTER TABLE "payments" ADD CONSTRAINT "ck_payments_status" CHECK (status IN ('pending', 'succeeded', 'failed', 'cancelled'));
